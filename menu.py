@@ -8,21 +8,22 @@
 from __future__ import print_function, unicode_literals, division, absolute_import
 
 import time
-import curses
+# import curses
 import threading
 import sys
 import os
 import signal
 import webbrowser
 import locale
+import hashlib
 from collections import namedtuple
 
 from future.builtins import range, str
 
 from api import NetEase
 from player import Player
-from ui import Ui
-from osdlyrics import show_lyrics_new_process
+# from ui import Ui
+# from osdlyrics import show_lyrics_new_process
 from config import Config
 from utils import notify
 from storage import Storage
@@ -106,10 +107,10 @@ class Menu(object):
         self.player = Player()
         self.player.playing_song_changed_callback = self.song_changed_callback
         self.cache = Cache()
-        self.ui = Ui()
+        # self.ui = Ui()
         self.api = NetEase()
-        self.screen = curses.initscr()
-        self.screen.keypad(1)
+        # self.screen = curses.initscr()
+        # self.screen.keypad(1)
         self.step = 10
         self.stack = []
         self.djstack = []
@@ -146,23 +147,27 @@ class Menu(object):
         if self.account and self.md5pass:
             account, md5pass = self.account, self.md5pass
         else:
-            account, md5pass = self.ui.build_login()
+            #modified
+            account = str(input('name:'))
+            password = str(input('password:'))
+            md5pass = hashlib.md5(password.encode("utf-8")).hexdigest()
 
         resp = self.api.login(account, md5pass)
         if resp["code"] == 200:
             userid = resp["account"]["id"]
             nickname = resp["profile"]["nickname"]
             self.storage.login(account, md5pass, userid, nickname)
+            print('that is right........')
             return True
         else:
             self.storage.logout()
-            x = self.ui.build_login_error()
-            if x != ord("1"):
-                return False
+            # x = self.ui.build_login_error()
+            # if x != ord("1"):
+            #     return False
             return self.login()
 
     def search(self, category):
-        self.ui.screen.timeout(-1)
+        # self.ui.screen.timeout(-1)
         SearchArg = namedtuple("SearchArg", ["prompt", "api_type", "post_process"])
         category_map = {
             "songs": SearchArg("搜索歌曲：", 1, lambda datalist: datalist),
@@ -172,7 +177,9 @@ class Menu(object):
         }
 
         prompt, api_type, post_process = category_map[category]
-        keyword = self.ui.get_param(prompt)
+        # keyword = self.ui.get_param(prompt)
+        keyword = str(input('Input the song\'s name:'))
+
         if not keyword:
             return []
 
@@ -191,7 +198,7 @@ class Menu(object):
         self.player.stop()
         self.cache.quit()
         self.storage.save()
-        curses.endwin()
+        # curses.endwin()
         sys.exit()
 
     def update_alert(self, version):
@@ -249,21 +256,39 @@ class Menu(object):
         self.player.prev()
 
     def start(self):
-        self.menu_starts = time.time()
-        self.ui.build_menu(
-            self.datatype,
-            self.title,
-            self.datalist,
-            self.offset,
-            self.index,
-            self.step,
-            self.menu_starts,
-        )
-        self.stack.append(
-            [self.datatype, self.title, self.datalist, self.offset, self.index]
-        )
 
-        show_lyrics_new_process()
+        # while True:
+
+        #     print('input 1:login,2:search,100:break')
+        #     num = int(input('Please input your choice:'))   
+        #     print('you input {}'.format(num))
+
+        #     if (num == 1):
+        #         print('username before: {}'.format(self.user))
+        #         myplaylist = self.request_api(self.api.user_playlist, self.userid)
+        #         print(myplaylist)
+        #         print('username: {}'.format(self.user))
+        #     elif num == 2:
+        #         datalist = self.search('songs')
+        #         print('search result:')
+        #         for idxx,val in enumerate(datalist):
+        #             print('{}:{}-{}'.format(idxx,val['song_name'],val['artist']))
+        #             if idxx > 10:
+        #                 break;
+
+        #     elif num == 100:
+        #         break
+
+        #############################################################afer:
+
+        def print_info():
+            print('1:清空信息并退出')
+            print('2:上移')
+            print('3:下移')
+            print('4:搜索')
+            print('5:播放')
+
+
         while True:
             datatype = self.datatype
             title = self.title
@@ -271,30 +296,20 @@ class Menu(object):
             offset = self.offset
             idx = self.index
             step = self.step
-            self.screen.timeout(500)
-            key = self.screen.getch()
-            self.ui.screen.refresh()
 
-            # term resize
-            if key == -1:
-                self.player.update_size()
+            print_info()
 
-            if self.is_in_countdown:
-                if time.time() - self.countdown_start > self.countdown:
-                    key = ord("q")
+            key = int(input('请输入你的选择:'))
 
-            # 退出
-            if key == ord("q"):
+            if key == 100:
+                print('正在退出....')
                 break
 
-            # 退出并清除用户信息
-            if key == ord("w"):
+            elif key == 1:
                 self.api.logout()
                 break
 
-            # 上移
-            elif key == ord("k"):
-                # turn page if at beginning
+            elif key == 2:
                 if idx == offset:
                     if offset == 0:
                         continue
@@ -306,10 +321,7 @@ class Menu(object):
                         offset, min(len(datalist), offset + step) - 1, idx - 1
                     )
                 self.menu_starts = time.time()
-
-            # 下移
-            elif key == ord("j"):
-                # turn page if at end
+            elif key == 3:
                 if idx == min(len(datalist), offset + step) - 1:
                     if offset + step >= len(datalist):
                         continue
@@ -321,128 +333,25 @@ class Menu(object):
                         offset, min(len(datalist), offset + step) - 1, idx + 1
                     )
                 self.menu_starts = time.time()
-
-            # 数字快捷键
-            elif ord("0") <= key <= ord("9"):
-                idx = key - ord("0")
-                self.ui.build_menu(
-                    self.datatype,
-                    self.title,
-                    self.datalist,
-                    self.offset,
-                    idx,
-                    self.step,
-                    self.menu_starts,
-                )
-                self.ui.build_loading()
-                self.dispatch_enter(idx)
+            elif key == 4:
                 self.index = 0
                 self.offset = 0
-
-            # 向上翻页
-            elif key == ord("u"):
-                if offset == 0:
-                    continue
-                self.menu_starts = time.time()
-                self.offset -= step
-
-                # e.g. 23 - 10 = 13 --> 10
-                self.index = (self.index - step) // step * step
-
-            # 向下翻页
-            elif key == ord("d"):
-                if offset + step >= len(datalist):
-                    continue
-                self.menu_starts = time.time()
-                self.offset += step
-
-                # e.g. 23 + 10 = 33 --> 30
-                self.index = (self.index + step) // step * step
-
-            # 前进
-            elif key == ord("l") or key == 10:
-                self.enter_flag = True
-                if len(self.datalist) <= 0:
-                    continue
-                self.menu_starts = time.time()
-                self.ui.build_loading()
-                self.dispatch_enter(idx)
-                if self.enter_flag is True:
-                    self.index = 0
-                    self.offset = 0
-
-            # 回退
-            elif key == ord("h"):
-                # if not main menu
-                if len(self.stack) == 1:
-                    continue
-                self.menu_starts = time.time()
-                up = self.stack.pop()
-                self.datatype = up[0]
-                self.title = up[1]
-                self.datalist = up[2]
-                self.offset = up[3]
-                self.index = up[4]
-                self.at_playing_list = False
-
-            # 搜索
-            elif key == ord("f"):
-                # 8 is the 'search' menu
-                self.dispatch_enter(8)
-
-            # 播放下一曲
-            elif key == ord("]"):
-                self.next_song()
-
-            # 播放上一曲
-            elif key == ord("["):
-                self.previous_song()
-
-            # 增加音量
-            elif key == ord("="):
-                self.player.volume_up()
-
-            # 减少音量
-            elif key == ord("-"):
-                self.player.volume_down()
-
-            # 随机播放
-            elif key == ord("?"):
-                if len(self.player.info["player_list"]) == 0:
-                    continue
-                self.player.shuffle()
-
-            # 喜爱
-            elif key == ord(","):
-                return_data = self.request_api(self.api.fm_like, self.player.playing_id)
-                if return_data:
-                    song_name = self.player.playing_name
-                    notify("%s added successfully!" % song_name, 0)
-                else:
-                    notify("Adding song failed!", 0)
-
-            # 删除FM
-            elif key == ord("."):
-                if self.datatype == "fmsongs":
-                    if len(self.player.info["player_list"]) == 0:
-                        continue
-                    self.player.next()
-                    return_data = self.request_api(
-                        self.api.fm_trash, self.player.playing_id
-                    )
-                    if return_data:
-                        notify("Deleted successfully!", 0)
-
-            # 下一FM
-            elif key == ord("/"):
-                if self.datatype == "fmsongs":
-                    if len(self.player.info["player_list"]) == 0:
-                        continue
-                    if self.player.end_callback:
-                        self.player.end_callback()
-
-            # 播放、暂停
-            elif key == ord(" "):
+                idx = 1;
+                SearchCategory = namedtuple("SearchCategory", ["type", "title"])
+                idx_map = {
+                    0: SearchCategory("playlists", "精选歌单搜索列表"),
+                    1: SearchCategory("songs", "歌曲搜索列表"),
+                    2: SearchCategory("artists", "艺术家搜索列表"),
+                    3: SearchCategory("albums", "专辑搜索列表"),
+                }
+                self.datatype, self.title = idx_map[idx]
+                self.datalist = self.search(self.datatype)
+                print('search result:')
+                for idxx,val in enumerate(self.datalist):
+                    print('{}:{}-{}'.format(idxx,val['song_name'],val['artist']))
+                    if idxx > 10:
+                        break;
+            elif key == 5:
                 if not self.datalist:
                     continue
 
@@ -475,183 +384,7 @@ class Menu(object):
                     isNotSongs = True
                     self.player.play_or_pause(self.player.info["idx"], isNotSongs)
 
-            # 加载当前播放列表
-            elif key == ord("p"):
-                self.show_playing_song()
 
-            # 播放模式切换
-            elif key == ord("P"):
-                self.player.change_mode()
-
-            # 进入专辑
-            elif key == ord("A"):
-                if datatype == "album":
-                    continue
-                if datatype in ["songs", "fmsongs"]:
-                    song_id = datalist[idx]["song_id"]
-                    album_id = datalist[idx]["album_id"]
-                    album_name = datalist[idx]["album_name"]
-                elif self.player.playing_flag:
-                    song_id = self.player.playing_id
-                    song_info = self.player.songs.get(str(song_id), {})
-                    album_id = song_info.get("album_id", "")
-                    album_name = song_info.get("album_name", "")
-                else:
-                    album_id = 0
-                if album_id:
-                    self.stack.append([datatype, title, datalist, offset, self.index])
-                    songs = self.api.album(album_id)
-                    self.datatype = "songs"
-                    self.datalist = self.api.dig_info(songs, "songs")
-                    self.title = "网易云音乐 > 专辑 > %s" % album_name
-                    for i in range(len(self.datalist)):
-                        if self.datalist[i]["song_id"] == song_id:
-                            self.offset = i - i % step
-                            self.index = i
-                            break
-
-            # 添加到打碟歌单
-            elif key == ord("a"):
-                if datatype == "songs" and len(datalist) != 0:
-                    self.djstack.append(datalist[idx])
-                elif datatype == "artists":
-                    pass
-
-            # 加载打碟歌单
-            elif key == ord("z"):
-                self.stack.append([datatype, title, datalist, offset, self.index])
-                self.datatype = "songs"
-                self.title = "网易云音乐 > 打碟"
-                self.datalist = self.djstack
-                self.offset = 0
-                self.index = 0
-
-            # 添加到本地收藏
-            elif key == ord("s"):
-                if (datatype == "songs" or datatype == "djchannels") and len(
-                    datalist
-                ) != 0:
-                    self.collection.append(datalist[idx])
-                    notify("Added successfully", 0)
-
-            # 加载本地收藏
-            elif key == ord("c"):
-                self.stack.append([datatype, title, datalist, offset, self.index])
-                self.datatype = "songs"
-                self.title = "网易云音乐 > 本地收藏"
-                self.datalist = self.collection
-                self.offset = 0
-                self.index = 0
-
-            # 从当前列表移除
-            elif key == ord("r"):
-                if (
-                    datatype in ("songs", "djchannels", "fmsongs")
-                    and len(datalist) != 0
-                ):
-                    self.datalist.pop(idx)
-                    self.index = carousel(
-                        offset, min(len(datalist), offset + step) - 1, idx
-                    )
-
-            elif key == ord("t"):
-                self.countdown_start = time.time()
-                countdown = self.ui.build_timing()
-                if not countdown.isdigit():
-                    notify("The input should be digit")
-                    continue
-
-                countdown = int(countdown)
-                if countdown > 0:
-                    notify("The musicbox will exit in {} minutes".format(countdown))
-                    self.countdown = countdown * 60
-                    self.is_in_countdown = True
-                else:
-                    notify("The timing exit has been canceled")
-                    self.is_in_countdown = False
-
-            # 当前项目下移
-            elif key == ord("J"):
-                if (
-                    datatype != "main"
-                    and len(datalist) != 0
-                    and idx + 1 != len(self.datalist)
-                ):
-                    self.menu_starts = time.time()
-                    song = self.datalist.pop(idx)
-                    self.datalist.insert(idx + 1, song)
-                    self.index = idx + 1
-                    # 翻页
-                    if self.index >= offset + step:
-                        self.offset = offset + step
-
-            # 当前项目上移
-            elif key == ord("K"):
-                if datatype != "main" and len(datalist) != 0 and idx != 0:
-                    self.menu_starts = time.time()
-                    song = self.datalist.pop(idx)
-                    self.datalist.insert(idx - 1, song)
-                    self.index = idx - 1
-                    # 翻页
-                    if self.index < offset:
-                        self.offset = offset - step
-
-            elif key == ord("m"):
-                if datatype != "main":
-                    self.stack.append([datatype, title, datalist, offset, self.index])
-                    self.datatype = self.stack[0][0]
-                    self.title = self.stack[0][1]
-                    self.datalist = self.stack[0][2]
-                    self.offset = 0
-                    self.index = 0
-
-            elif key == ord("g"):
-                if datatype == "help":
-                    webbrowser.open_new_tab("https://github.com/darknessomi/musicbox")
-                else:
-                    self.index = 0
-                    self.offset = 0
-
-            elif key == ord("G"):
-                self.index = len(self.datalist) - 1
-                self.offset = self.index - self.index % step
-
-            # 开始下载
-            elif key == ord("C"):
-                s = self.datalist[idx]
-                cache_thread = threading.Thread(
-                    target=self.player.cache_song,
-                    args=(s["song_id"], s["song_name"], s["artist"], s["mp3_url"]),
-                )
-                cache_thread.start()
-
-            elif key == ord("i"):
-                if self.player.playing_id != -1:
-                    webbrowser.open_new_tab(
-                        "http://music.163.com/song?id={}".format(self.player.playing_id)
-                    )
-
-            self.ui.build_process_bar(
-                self.player.current_song,
-                self.player.process_location,
-                self.player.process_length,
-                self.player.playing_flag,
-                self.player.info["playing_mode"],
-            )
-            self.ui.build_menu(
-                self.datatype,
-                self.title,
-                self.datalist,
-                self.offset,
-                self.index,
-                self.step,
-                self.menu_starts,
-            )
-
-        self.player.stop()
-        self.cache.quit()
-        self.storage.save()
-        curses.endwin()
 
     def dispatch_enter(self, idx):
         # The end of stack
@@ -833,6 +566,7 @@ class Menu(object):
         if result:
             return result
         if not self.login():
+            print('you really need to login')
             notify("You need to log in")
             return False
         return func(*args)

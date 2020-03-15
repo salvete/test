@@ -18,7 +18,7 @@ import random
 
 from future.builtins import str
 
-from ui import Ui
+# from ui import Ui
 from storage import Storage
 from api import NetEase
 from cache import Cache
@@ -39,7 +39,7 @@ class Player(object):
 
     def __init__(self):
         self.config = Config()
-        self.ui = Ui()
+        # self.ui = Ui()
         self.popen_handler = None
         # flag stop, prevent thread start
         self.playing_flag = False
@@ -157,14 +157,14 @@ class Player(object):
         if not self.current_song:
             return
 
-        self.ui.build_playinfo(
-            self.current_song["song_name"],
-            self.current_song["artist"],
-            self.current_song["album_name"],
-            self.current_song["quality"],
-            time.time(),
-            pause=not self.playing_flag,
-        )
+        # self.ui.build_playinfo(
+        #     self.current_song["song_name"],
+        #     self.current_song["artist"],
+        #     self.current_song["album_name"],
+        #     self.current_song["quality"],
+        #     time.time(),
+        #     pause=not self.playing_flag,
+        # )
 
     def add_songs(self, songs):
         for song in songs:
