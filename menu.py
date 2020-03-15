@@ -287,6 +287,9 @@ class Menu(object):
             print('3:下移')
             print('4:搜索')
             print('5:播放')
+            print('6:登录')
+            print('7:个人歌单')
+            print('100:直接退出')
 
 
         while True:
@@ -303,6 +306,8 @@ class Menu(object):
 
             if key == 100:
                 print('正在退出....')
+                self.player.stop()
+                self.storage.save()
                 break
 
             elif key == 1:
@@ -346,45 +351,53 @@ class Menu(object):
                 }
                 self.datatype, self.title = idx_map[idx]
                 self.datalist = self.search(self.datatype)
+                
+
                 print('search result:')
                 for idxx,val in enumerate(self.datalist):
                     print('{}:{}-{}'.format(idxx,val['song_name'],val['artist']))
                     if idxx > 10:
                         break;
+
+                which_one = int(input('输入想要播放的序号：'))
+
+                while which_one > 10 or which_one < 0:
+                    which_one = int(input('序号不合理,重新输入：'))
+
+                self.player.new_player_list('songs',self.title,self.datalist,-1)
+                self.idx = which_one
+                self.player.play_or_pause(self.idx,self.at_playing_list)
+
+
             elif key == 5:
-                if not self.datalist:
-                    continue
-
-                if idx < 0 or idx >= len(self.datalist):
-                    self.player.info["idx"] = 0
-
-                # If change to a new playing list. Add playing list and play.
-                if datatype == "songs":
-                    self.player.new_player_list("songs", self.title, self.datalist, -1)
-                    self.player.end_callback = None
-                    self.player.play_or_pause(idx, self.at_playing_list)
-                    self.at_playing_list = True
-                elif datatype == "djchannels":
-                    self.player.new_player_list(
-                        "djchannels", self.title, self.datalist, -1
-                    )
-                    self.player.end_callback = None
-                    self.player.play_or_pause(idx, self.at_playing_list)
-                    self.at_playing_list = True
-                elif datatype == "fmsongs":
-                    self.player.change_mode(0)
-                    self.player.new_player_list(
-                        "fmsongs", self.title, self.datalist, -1
-                    )
-                    self.player.end_callback = self.fm_callback
-                    self.player.play_or_pause(idx, self.at_playing_list)
-                    self.at_playing_list = True
-                else:
-                    # 所在列表类型不是歌曲
-                    isNotSongs = True
-                    self.player.play_or_pause(self.player.info["idx"], isNotSongs)
+                print('当前的歌单：')
+                cnt = 0
+                for key in self.player.songs.keys():
+                    print('{}.{}----{}'.format(cnt,self.player.songs[key]['song_name'],self.player.songs[key]['artist']))
+                    cnt += 1
+                    if cnt > 10:
+                        break
+                
+                which_one = int(input('输入想要播放的序号：'))
+                while which_one > 10 or which_one < 0:
+                    which_one = int(input('序号不合理,重新输入：'))
+                self.idx = which_one
+                self.player.play_or_pause(self.idx,self.at_playing_list)
+            elif key == 6:
+                myplaylist = self.request_api(self.api.user_playlist, self.userid)
+                self.datatype = 'top_playlists'
+                myplaylist = self.api.dig_info(myplaylist, self.datatype)
+                print('{}的歌单:'.format(self.username))
+                print(myplaylist)
+            elif key == 7:
+                myplaylist = self.request_api(self.api.user_playlist, self.userid)
+                self.datatype = 'top_playlists'
+                myplaylist = self.api.dig_info(myplaylist, self.datatype)
+                print('{}的歌单:'.format(self.username))
+                print(myplaylist)
 
 
+                
 
     def dispatch_enter(self, idx):
         # The end of stack

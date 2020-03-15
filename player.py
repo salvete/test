@@ -376,6 +376,7 @@ class Player(object):
         self.info["player_list"] = []
         self.info["playing_order"] = []
         self.info["random_index"] = 0
+        self.songs.clear()
         self.add_songs(datalist)
 
     def append_songs(self, datalist):
