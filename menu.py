@@ -282,6 +282,7 @@ class Menu(object):
         #############################################################afer:
 
         def print_info():
+            print('----------------------------')
             print('1:清空信息并退出')
             print('2:上移')
             print('3:下移')
@@ -290,6 +291,8 @@ class Menu(object):
             print('6:登录')
             print('7:个人歌单')
             print('100:直接退出')
+            print('----------------------------')
+
 
 
         while True:
@@ -304,6 +307,8 @@ class Menu(object):
 
             key = int(input('请输入你的选择:'))
 
+
+
             if key == 100:
                 print('正在退出....')
                 self.player.stop()
@@ -312,6 +317,8 @@ class Menu(object):
 
             elif key == 1:
                 self.api.logout()
+                print('正在退出....')
+                self.player.stop()
                 break
 
             elif key == 2:
@@ -387,14 +394,15 @@ class Menu(object):
                 myplaylist = self.request_api(self.api.user_playlist, self.userid)
                 self.datatype = 'top_playlists'
                 myplaylist = self.api.dig_info(myplaylist, self.datatype)
-                print('{}的歌单:'.format(self.username))
-                print(myplaylist)
+                notify('登录成功')
             elif key == 7:
                 myplaylist = self.request_api(self.api.user_playlist, self.userid)
                 self.datatype = 'top_playlists'
                 myplaylist = self.api.dig_info(myplaylist, self.datatype)
                 print('{}的歌单:'.format(self.username))
-                print(myplaylist)
+                for x,y in enumerate(myplaylist):
+                    print('{}.{}'.format(x,y['playlist_name']))
+                
 
 
                 
